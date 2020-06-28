@@ -50,7 +50,16 @@ public class GlobalStateSystem : MonoBehaviour
 
     private void NotifyPropertyChanged<T>(string property, T value)
     {
-        var listeners = (List<Action<T>>) PropertyListeners[property];
+        List<Action<T>> listeners;
+        try
+        {
+            listeners = (List<Action<T>>) PropertyListeners[property];
+        }
+        catch (KeyNotFoundException)
+        {
+            return;
+        }
+
         foreach (var listener in listeners)
         {
             listener(value);

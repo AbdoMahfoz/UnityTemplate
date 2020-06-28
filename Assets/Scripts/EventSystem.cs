@@ -6,29 +6,32 @@ using UnityEngine;
 public class EventSystem : MonoBehaviour
 {
     public string[] Events;
-    [HideInInspector] public Dictionary<string, List<Action<object>>> Subscribers;
+    [HideInInspector] public Dictionary<string, object> Subscribers;
 
     public void ListenToEvent<T>(string SubscriberName, string Event, Action<T> Callback)
     {
         if (!Events.Contains(Event))
             throw new ArgumentException(
                 $"{SubscriberName} attempted to subscribe to event {Event}, which is not listed in the event list");
-        Subscribers[Event].Add(o =>
+        if (Subscribers.ContainsKey(Event))
         {
-            T val;
             try
             {
-                val = (T) o;
+                ((List<Action<T>>) Subscribers[Event]).Add(Callback);
             }
-            catch (Exception)
+            catch (InvalidCastException)
             {
-                throw new InvalidOperationException($"Incompatible event arguments for event {Event};\n" +
-                                                    $"The source fired the event with an argument of type {o.GetType().Name}\n" +
-                                                    $"{SubscriberName} expected an argument of type {typeof(T).Name}\n");
+                throw new InvalidOperationException(
+                    $"Incompatible event callbacks for event {Event};\n" +
+                    "Conflict between already registered " +
+                    $"{Subscribers[Event].GetType().GetGenericArguments()[0].Name} and {typeof(Action<T>).Name} " +
+                    $"while {SubscriberName} was registering a listener");
             }
-
-            Callback(val);
-        });
+        }
+        else
+        {
+            Subscribers.Add(Event, new List<Action<T>> {Callback});
+        }
     }
 
     public void FireEvent<T>(string SourceName, string Event, T arg)
@@ -37,7 +40,25 @@ public class EventSystem : MonoBehaviour
             throw new ArgumentException(
                 $"{SourceName} attempted to fire event {Event}, which is not listed in the event list");
         Debug.Log($"{SourceName} fired {Event}");
-        foreach (var callback in Subscribers[Event])
+        List<Action<T>> callbacks;
+        try
+        {
+            callbacks = (List<Action<T>>) Subscribers[Event];
+        }
+        catch (InvalidCastException)
+        {
+            throw new InvalidOperationException(
+                $"Incompatible event callbacks for event {Event};\n" +
+                "Conflict between already registered " +
+                $"{Subscribers[Event].GetType().GetGenericArguments()[0].Name} and {typeof(Action<T>).Name} " +
+                $"while {SourceName} was igniting this event");
+        }
+        catch (KeyNotFoundException)
+        {
+            return;
+        }
+
+        foreach (var callback in callbacks)
         {
             callback(arg);
         }
