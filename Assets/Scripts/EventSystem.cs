@@ -22,7 +22,7 @@ public class EventSystem : MonoBehaviour
             }
             catch (Exception)
             {
-                throw new InvalidOperationException($"Incompatible event types for event {Event};\n" +
+                throw new InvalidOperationException($"Incompatible event arguments for event {Event};\n" +
                                                     $"The source fired the event with an argument of type {o.GetType().Name}\n" +
                                                     $"{SubscriberName} expected an argument of type {typeof(T).Name}\n");
             }
